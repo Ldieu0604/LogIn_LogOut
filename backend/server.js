@@ -22,12 +22,30 @@ const MOCK_TOKENS = {
   'mock-token-supervisor': MOCK_USERS['supervisor'],
 };
 
+// Mock Organizations & Memberships
+const MOCK_ORGANIZATIONS = [
+  { slug: 'vinai-org', name: 'VinAI Org', description: 'VinAI Annotation Project' },
+  { slug: 'test-org', name: 'Test Org', description: 'Testing Organization' }
+];
+
+// Mapping User ID -> list of organizations and their role in it
+const MOCK_MEMBERSHIPS = {
+  // admin is an owner of vinai-org
+  1: [{ organization: MOCK_ORGANIZATIONS[0], role: 'owner' }], 
+  // user is a worker in vinai-org and supervisor in test-org
+  2: [
+    { organization: MOCK_ORGANIZATIONS[0], role: 'worker' },
+    { organization: MOCK_ORGANIZATIONS[1], role: 'supervisor' }
+  ],
+  // worker is just a worker in test-org
+  3: [{ organization: MOCK_ORGANIZATIONS[1], role: 'worker' }],
+  4: [{ organization: MOCK_ORGANIZATIONS[0], role: 'supervisor' }]
+};
+
 // 1. Mock Login Endpoint (POST /api/auth/login)
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   
-  console.log(`[Mock Server] Login attempt for: ${username}`);
-
   if (MOCK_USERS[username] && MOCK_USERS[username].password === password) {
     res.json({ key: MOCK_USERS[username].token });
   } else {
@@ -35,20 +53,18 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
+// Helper to get user from token
+const getUserFromReq = (req) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Token ')) return null;
+  return MOCK_TOKENS[authHeader.split(' ')[1]];
+};
+
 // 2. Mock Get Current User Endpoint (GET /api/users/self)
 app.get('/api/users/self', (req, res) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Token ')) {
-    return res.status(401).json({ detail: 'Authentication credentials were not provided.' });
-  }
-
-  const token = authHeader.split(' ')[1];
-  const user = MOCK_TOKENS[token];
-
+  const user = getUserFromReq(req);
   if (user) {
-    console.log(`[Mock Server] Retrieved self data for: ${user.groups[0]}`);
-    // Simulate CVAT user response
+    const isSuperuser = user.groups.includes('admin');
     res.json({
       id: user.id,
       username: user.groups[0],
@@ -56,8 +72,8 @@ app.get('/api/users/self', (req, res) => {
       last_name: '',
       email: `${user.groups[0]}@example.com`,
       groups: user.groups,
-      is_staff: user.groups.includes('admin'),
-      is_superuser: user.groups.includes('admin'),
+      is_staff: isSuperuser,
+      is_superuser: isSuperuser, // Admin will have is_superuser: true
       is_active: true
     });
   } else {
@@ -65,7 +81,27 @@ app.get('/api/users/self', (req, res) => {
   }
 });
 
+// 3. Mock Get Organizations Endpoint (GET /api/organizations)
+app.get('/api/organizations', (req, res) => {
+  const user = getUserFromReq(req);
+  if (!user) {
+    return res.status(401).json({ detail: 'Invalid token.' });
+  }
+
+  const memberships = MOCK_MEMBERSHIPS[user.id] || [];
+  
+  // Format matches CVAT API (returns results array)
+  const results = memberships.map(m => ({
+    ...m.organization,
+    membership_role: m.role 
+  }));
+
+  res.json({
+    count: results.length,
+    results: results
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`[Mock Server] CVAT Auth API is running on http://localhost:${PORT}`);
-  console.log('Available test accounts (username:password) -> admin:password123, user:password123, worker:password123');
 });
