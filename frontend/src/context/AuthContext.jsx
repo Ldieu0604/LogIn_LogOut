@@ -7,34 +7,45 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [organizations, setOrganizations] = useState([]);
+  const [activeOrganization, setActiveOrganization] = useState(null); // null = Personal Workspace
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in on mount
     const token = localStorage.getItem('cvat_token');
     if (token) {
-      fetchCurrentUser(token);
+      fetchCurrentUserAndOrgs(token);
     } else {
       setLoading(false);
     }
   }, []);
 
-  const fetchCurrentUser = async (token) => {
+  const fetchCurrentUserAndOrgs = async (token) => {
     try {
-      const response = await fetch(`${API_URL}/api/users/self`, {
-        headers: {
-          'Authorization': `Token ${token}`
-        }
+      // 1. Fetch User
+      const userRes = await fetch(`${API_URL}/api/users/self`, {
+        headers: { 'Authorization': `Token ${token}` }
       });
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else {
-        localStorage.removeItem('cvat_token');
-        setUser(null);
+      
+      if (!userRes.ok) throw new Error("Failed to fetch user");
+      const userData = await userRes.json();
+      setUser(userData);
+
+      // 2. Fetch Organizations
+      const orgRes = await fetch(`${API_URL}/api/organizations`, {
+        headers: { 'Authorization': `Token ${token}` }
+      });
+      
+      if (orgRes.ok) {
+        const orgData = await orgRes.json();
+        setOrganizations(orgData.results || []);
       }
+
     } catch (error) {
-      console.error("Error fetching user", error);
+      console.error("Error fetching data", error);
+      localStorage.removeItem('cvat_token');
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -52,7 +63,7 @@ export const AuthProvider = ({ children }) => {
 
       if (response.ok && data.key) {
         localStorage.setItem('cvat_token', data.key);
-        await fetchCurrentUser(data.key);
+        await fetchCurrentUserAndOrgs(data.key);
         return { success: true };
       } else {
         return { success: false, message: data.non_field_errors?.[0] || 'Login failed' };
@@ -65,10 +76,20 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('cvat_token');
     setUser(null);
+    setOrganizations([]);
+    setActiveOrganization(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      organizations, 
+      activeOrganization, 
+      setActiveOrganization, 
+      login, 
+      logout, 
+      loading 
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );
