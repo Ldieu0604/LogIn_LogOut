@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
 // CVAT Mock API or Real CVAT API
-const API_URL = 'http://localhost:3000';
+const API_URL = '';
 
 const AuthContext = createContext(null);
 
@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
       const userRes = await fetch(`${API_URL}/api/users/self`, {
         headers: { 'Authorization': `Token ${token}` }
       });
-      
+
       if (!userRes.ok) throw new Error("Failed to fetch user");
       const userData = await userRes.json();
       setUser(userData);
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
       const orgRes = await fetch(`${API_URL}/api/organizations`, {
         headers: { 'Authorization': `Token ${token}` }
       });
-      
+
       if (orgRes.ok) {
         const orgData = await orgRes.json();
         setOrganizations(orgData.results || []);
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
+        method: 'POST', credentials: 'omit',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
@@ -81,14 +81,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      organizations, 
-      activeOrganization, 
-      setActiveOrganization, 
-      login, 
-      logout, 
-      loading 
+    <AuthContext.Provider value={{
+      user,
+      organizations,
+      activeOrganization,
+      setActiveOrganization,
+      login,
+      logout,
+      loading
     }}>
       {!loading && children}
     </AuthContext.Provider>
