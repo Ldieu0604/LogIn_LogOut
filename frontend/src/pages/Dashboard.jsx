@@ -45,12 +45,18 @@ export default function Dashboard() {
   // Render role badge helper
   const getRoleBadge = (role, isOrgContext) => {
     if (isSuperuser) return <span className="role-badge role-admin">Superuser (Global Override)</span>;
-    if (role === 'admin') return <span className="role-badge role-admin">Global Admin</span>;
-    if (role === 'owner') return <span className="role-badge role-admin">Org Owner</span>;
-    if (role === 'maintainer') return <span className="role-badge" style={{color: '#8b5cf6', borderColor: '#8b5cf6'}}>Maintainer</span>;
-    if (role === 'supervisor') return <span className="role-badge" style={{color: '#f59e0b', borderColor: '#f59e0b'}}>Supervisor</span>;
-    if (role === 'worker') return <span className="role-badge role-worker">Worker</span>;
-    return <span className="role-badge">User</span>;
+    
+    if (isOrgContext) {
+      if (role === 'owner') return <span className="role-badge role-admin">Org Owner</span>;
+      if (role === 'maintainer') return <span className="role-badge" style={{color: '#8b5cf6', borderColor: '#8b5cf6'}}>Org Maintainer</span>;
+      if (role === 'supervisor') return <span className="role-badge" style={{color: '#f59e0b', borderColor: '#f59e0b'}}>Org Supervisor</span>;
+      if (role === 'worker') return <span className="role-badge role-worker">Org Worker</span>;
+    } else {
+      if (role === 'admin') return <span className="role-badge role-admin">Global Admin</span>;
+      if (role === 'user') return <span className="role-badge" style={{color: '#3b82f6', borderColor: '#3b82f6'}}>Global User</span>;
+      if (role === 'worker') return <span className="role-badge role-worker">Global Worker</span>;
+    }
+    return <span className="role-badge">{role}</span>;
   };
 
   return (
@@ -157,3 +163,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
